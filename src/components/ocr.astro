@@ -1,55 +1,123 @@
+---
+import Spiner from './spiner.astro';
+---
+
 <ocr-component>
   <div class="upload-section">
     <input type="file" id="imageUploader" accept="image/*" />
     <p id="status">Upload an image to extract text.</p>
+    <Spiner />
   </div>
   <div class="output-section">
     <h2>Extracted Text:</h2>
-    <output id="extractedText" class="text-output"></output>
+    <output contenteditable="true" id="extractedText" class="text-output"></output>
   </div>
 </ocr-component>
 
 <script>
 import { createWorker } from 'tesseract.js';
 
-  class OCRComponent extends HTMLElement {
-    constructor() {
-      super();
-const inputUploader = this.querySelector('#imageUploader') as HTMLInputElement;
-const extractedText = this.querySelector('#extractedText') as HTMLParagraphElement;
-                                    const status = document.getElementById('status') as HTMLParagraphElement;
+class OCRComponent extends HTMLElement {
+  constructor() {
+    super();
+    const inputUploader = this.querySelector(
+      '#imageUploader'
+    ) as HTMLInputElement;
+    const extractedText = this.querySelector(
+      '#extractedText'
+    ) as HTMLOutputElement;
+    const statusElement = this.querySelector('#status') as HTMLParagraphElement;
+    const loaderSpinner = this.querySelector('.loader') as HTMLDivElement;
 
-                                    inputUploader?.addEventListener('change', function (event: Event) {
-                                      const target = event.target as HTMLInputElement;
-                                      const file = target.files ? target.files[0] : null;  
-                                      if (file) {
-                                          const reader = new FileReader();
-                                          reader.onload = function (e: ProgressEvent<FileReader>) {
-                                            console.group('READER loading');
-                                            const img = new Image();
-                                            img.src = e.target?.result as string;
-
-        img.onload = async function () {
-          console.group('img loading');
-          const worker = await createWorker('eng', 1, {
-            logger: (m) => console.log(m),
-          });
-          const ret = await worker.recognize(img);
-          console.log(ret.data.text);
-          const {
-            data: { text },
-          } = ret;
-          extractedText.innerText = text;
-          status.innerText = 'Text extracted successfully!';
-          await worker.terminate();
-          console.groupEnd();
+    inputUploader?.addEventListener('change', function (event: Event) {
+      const target = event.target as HTMLInputElement;
+      const file = target.files ? target.files[0] : null;
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e: ProgressEvent<FileReader>) {
+          console.log('READER loading');
+          const img = new Image();
+          img.src = e.target?.result as string;
+          img.onload = async function () {
+            const worker = await createWorker('eng', 1, {
+              logger: ({ status, progress }) => {
+                loaderSpinner.classList.add('loading');
+                statusElement.classList.add('loading');
+                statusElement.classList.remove('success');
+                extractedText.value = '';
+                if(status === 'recognizing text') {
+                  statusElement.innerText = `${status} - ${(progress*100).toFixed(2)}%`;
+                } else {
+                  statusElement.innerText = status;
+                }
+              },
+            });
+            const ret = await worker.recognize(img);
+            loaderSpinner.classList.remove('loading');
+            statusElement.classList.remove('loading');
+            statusElement.classList.add('success');
+            const {
+              data: { text },
+            } = ret;
+            extractedText.value = text;
+            statusElement.innerText = 'Text extracted successfully!';
+            await worker.terminate();
+          };
         };
-        console.groupEnd();
-      };
-      reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+}
+customElements.define('ocr-component', OCRComponent);
+</script>
+
+<style>
+  .upload-section {
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  input[type="file"] {
+    display: inline-block;
+    min-width: 400px;
+    font-size: 16px;
+    padding: 10px;
+    border: 2px solid #0090de;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+  }
+  input[type="file"]:hover {
+    border-color: #222;
+  }
+  #status {
+    font-size: 1.5rem;
+    margin-top: 10px;
+    &::first-letter{
+      text-transform: capitalize;
     }
-})
+    &.loading{
+      color: #0090de;
+    }
+    &.success{
+      color: #009032;
     }
   }
-  customElements.define('ocr-component', OCRComponent);
-</script>
+  .output-section {
+    margin-top: 30px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+  .text-output {
+    display: block;
+    border-radius: 5px;
+    padding: 15px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    min-height: 150px;
+    width: 500px;
+    overflow-y: auto;
+  }
+</style>
