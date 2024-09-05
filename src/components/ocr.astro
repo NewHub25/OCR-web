@@ -1,0 +1,55 @@
+<ocr-component>
+  <div class="upload-section">
+    <input type="file" id="imageUploader" accept="image/*" />
+    <p id="status">Upload an image to extract text.</p>
+  </div>
+  <div class="output-section">
+    <h2>Extracted Text:</h2>
+    <output id="extractedText" class="text-output"></output>
+  </div>
+</ocr-component>
+
+<script>
+import { createWorker } from 'tesseract.js';
+
+  class OCRComponent extends HTMLElement {
+    constructor() {
+      super();
+const inputUploader = this.querySelector('#imageUploader') as HTMLInputElement;
+const extractedText = this.querySelector('#extractedText') as HTMLParagraphElement;
+                                    const status = document.getElementById('status') as HTMLParagraphElement;
+
+                                    inputUploader?.addEventListener('change', function (event: Event) {
+                                      const target = event.target as HTMLInputElement;
+                                      const file = target.files ? target.files[0] : null;  
+                                      if (file) {
+                                          const reader = new FileReader();
+                                          reader.onload = function (e: ProgressEvent<FileReader>) {
+                                            console.group('READER loading');
+                                            const img = new Image();
+                                            img.src = e.target?.result as string;
+
+        img.onload = async function () {
+          console.group('img loading');
+          const worker = await createWorker('eng', 1, {
+            logger: (m) => console.log(m),
+          });
+          const ret = await worker.recognize(img);
+          console.log(ret.data.text);
+          const {
+            data: { text },
+          } = ret;
+          extractedText.innerText = text;
+          status.innerText = 'Text extracted successfully!';
+          await worker.terminate();
+          console.groupEnd();
+        };
+        console.groupEnd();
+      };
+      reader.readAsDataURL(file);
+    }
+})
+    }
+  }
+  customElements.define('ocr-component', OCRComponent);
+</script>

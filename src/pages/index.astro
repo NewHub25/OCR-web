@@ -1,4 +1,5 @@
 ---
+import Ocr from '@components/ocr.astro';
 import Layout from "../layouts/Layout.astro";
 ---
 
@@ -6,18 +7,11 @@ import Layout from "../layouts/Layout.astro";
   <main>
     <div class="container">
       <h1>Extract Text from Image</h1>
-      <div class="upload-section">
-        <input type="file" id="imageUploader" accept="image/*" />
-        <p id="status">Upload an image to extract text.</p>
-      </div>
-      <div class="output-section">
-        <h2>Extracted Text:</h2>
-        <div id="extractedText" class="text-output"></div>
-      </div>
+      <Ocr>
     </div>
   </main>
 </Layout>
-<script src="@scripts/ocr.js"></script>
+<!-- <script src="@scripts/ocr.js"></script> -->
 <style is:global>
   * {
     box-sizing: border-box;
